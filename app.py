@@ -1,7 +1,9 @@
-import streamlit as st
+import  streamlit as st
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from xgboost import XGBRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
 import altair as alt
 
@@ -30,11 +32,31 @@ if uploaded_file is not None:
     X = df[features]
     y = df['Demand Forecast']
 
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
     # --- Train Model ---
     model = XGBRegressor(n_estimators=100, learning_rate=0.1, max_depth=5, random_state=42)
-    model.fit(X, y)
+    model.fit(X_train, y_train)
 
+    # --- Predict on Test Data ---
+    y_pred_test = model.predict(X_test)
+
+    # --- Evaluate Model ---
+    mae = mean_absolute_error(y_test, y_pred_test)
+    mse = mean_squared_error(y_test, y_pred_test)
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y_test, y_pred_test)
+
+    st.subheader("📈 Model Evaluation Metrics (on Test Data)")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("MAE", f"{mae:.2f}")
+    col2.metric("RMSE", f"{rmse:.2f}")
+    col3.metric("R² Score", f"{r2:.2f}")
+    col4.metric("Accuracy", f"{r2 * 100:.2f}%")
+
+    # --- Predict for full dataset for app logic ---
     df['Predicted Demand'] = model.predict(X)
+
 
     # --- Reorder Logic ---
     lead_time = st.slider("Select lead time (days)", min_value=1, max_value=10, value=3)
